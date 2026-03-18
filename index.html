@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iris Analysis — Argira Station</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070b0c;
+  --bg2: #0d1315;
+  --bg3: #131a1c;
+  --gold: #c8a96e;
+  --gold2: #e8c98e;
+  --cream: #e2d5be;
+  --muted: #5a6268;
+  --dim: #1a2225;
+  --teal: #7eb8a0;
+  --red: #c87e7e;
+  --purple: #9e7ec8;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── BACKGROUND ANIMATION ── */
+.bg-rings {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  overflow: hidden;
+}
+.bg-rings::before, .bg-rings::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(200,169,110,0.04);
+  animation: pulse-ring 8s ease-in-out infinite;
+}
+.bg-rings::before {
+  width: 600px; height: 600px;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+}
+.bg-rings::after {
+  width: 900px; height: 900px;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  animation-delay: -4s;
+}
+@keyframes pulse-ring {
+  0%,100% { opacity:0.3; transform: translate(-50%,-50%) scale(1); }
+  50% { opacity:0.8; transform: translate(-50%,-50%) scale(1.05); }
+}
+
+/* ── LAYOUT ── */
+.container {
+  position: relative; z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 52px 0 40px;
+  text-align: center;
+  border-bottom: 1px solid var(--dim);
+  margin-bottom: 52px;
+}
+.header-label {
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  opacity: 0.7;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 300;
+  color: var(--cream);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+header h1 em {
+  font-style: italic;
+  color: var(--gold);
+}
+header p {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  line-height: 1.8;
+}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone {
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+  padding: 52px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.3s, background 0.3s;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 48px;
+}
+.upload-zone::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(200,169,110,0.03) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--gold);
+  background: var(--bg2);
+}
+.upload-zone:hover::before { opacity: 1; }
+
+.upload-icon {
+  width: 52px; height: 52px;
+  margin: 0 auto 18px;
+  opacity: 0.4;
+}
+.upload-zone h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+.upload-zone p { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+#file-input { display: none; }
+
+/* ── PREVIEW ── */
+.preview-section {
+  display: none;
+  gap: 32px;
+  margin-bottom: 48px;
+}
+.preview-section.visible { display: grid; grid-template-columns: 1fr 1fr; }
+@media (max-width: 700px) { .preview-section.visible { grid-template-columns: 1fr; } }
+
+.preview-card {
+  background: var(--bg2);
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.preview-card-title {
+  padding: 12px 18px;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--dim);
+  opacity: 0.8;
+}
+.canvas-wrap {
+  position: relative;
+  background: #000;
+}
+#canvas-original, #canvas-processed {
+  width: 100%;
+  display: block;
+}
+
+/* ── ANALYZE BUTTON ── */
+.btn-analyze {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  margin-bottom: 48px;
+}
+.btn-analyze:hover { background: var(--gold); color: var(--bg); }
+.btn-analyze:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── PROGRESS ── */
+.progress-bar {
+  height: 1px;
+  background: var(--dim);
+  margin-bottom: 48px;
+  display: none;
+}
+.progress-bar.visible { display: block; }
+.progress-fill {
+  height: 100%;
+  background: var(--gold);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.progress-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  margin-top: 8px;
+}
+
+/* ── RESULTS ── */
+.results {
+  display: none;
+  animation: fade-up 0.6s ease forwards;
+}
+.results.visible { display: block; }
+@keyframes fade-up {
+  from { opacity:0; transform: translateY(20px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.section-label {
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  opacity: 0.7;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--dim);
+}
+
+/* ── METRICS GRID ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--dim);
+  margin-bottom: 48px;
+}
+@media (max-width: 700px) { .metrics-grid { grid-template-columns: repeat(2,1fr); } }
+
+.metric-card {
+  background: var(--bg2);
+  padding: 24px 20px;
+  text-align: center;
+}
+.metric-val {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  font-weight: 300;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.metric-name {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.metric-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── CHARTS ── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+@media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+
+.chart-card {
+  background: var(--bg2);
+  border: 1px solid var(--dim);
+  border-radius: 2px;
+  padding: 20px;
+}
+.chart-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+.chart-card canvas {
+  width: 100% !important;
+  display: block;
+}
+
+/* ── SONIFICATION ── */
+.sound-section {
+  background: var(--bg2);
+  border: 1px solid var(--dim);
+  padding: 32px;
+  margin-bottom: 48px;
+  text-align: center;
+}
+.sound-section h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 300;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+.sound-section p {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+  line-height: 1.8;
+}
+.btn-sound {
+  display: inline-block;
+  padding: 14px 40px;
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.2s;
+  margin: 0 8px;
+}
+.btn-sound:hover { background: var(--teal); color: var(--bg); }
+.btn-sound.playing { background: var(--teal); color: var(--bg); }
+
+.waveform-canvas {
+  width: 100%;
+  height: 60px;
+  margin-top: 20px;
+  border-top: 1px solid var(--dim);
+  padding-top: 16px;
+}
+
+/* ── INTERPRETATION ── */
+.interpretation {
+  border-left: 2px solid var(--gold);
+  padding: 24px 28px;
+  background: linear-gradient(135deg, rgba(200,169,110,0.04), transparent);
+  margin-bottom: 48px;
+}
+.interpretation h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+.interpretation p {
+  font-size: 11px;
+  color: var(--cream);
+  line-height: 1.9;
+  margin-bottom: 10px;
+}
+.interpretation p:last-child { margin-bottom: 0; }
+.interpretation strong { color: var(--gold); font-weight: 600; }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--dim);
+  padding: 32px 0 0;
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  line-height: 2;
+}
+footer a { color: var(--gold); text-decoration: none; }
+
+/* ── SPINNER ── */
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 1px solid var(--dim);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="bg-rings"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-label">Argira Station · Visual Acoustics — Iris Module</div>
+    <h1>Análisis del <em>Iris</em><br>Patrón Geométrico &amp; Sonificación</h1>
+    <p>
+      Detección automática · Dimensión fractal · FFT angular · Proporción φ · Síntesis aditiva<br>
+      Jose Ranero García · Feb 2026 · DOI 10.5281/zenodo.18758919
+    </p>
+  </header>
+
+  <!-- UPLOAD -->
+  <div class="upload-zone" id="upload-zone">
+    <svg class="upload-icon" viewBox="0 0 52 52" fill="none">
+      <circle cx="26" cy="26" r="20" stroke="#c8a96e" stroke-width="1" opacity="0.5"/>
+      <circle cx="26" cy="26" r="8" stroke="#c8a96e" stroke-width="1" opacity="0.8"/>
+      <circle cx="26" cy="26" r="2" fill="#c8a96e"/>
+      <path d="M26 6 L26 2 M26 50 L26 46 M6 26 L2 26 M50 26 L46 26" stroke="#c8a96e" stroke-width="0.8" opacity="0.4"/>
+    </svg>
+    <h2>Sube una fotografía de ojo</h2>
+    <p>ARRASTRA AQUÍ · O HAZ CLIC · JPG PNG · MACRO RECOMENDADO</p>
+    <input type="file" id="file-input" accept="image/*">
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-section" id="preview-section">
+    <div class="preview-card">
+      <div class="preview-card-title">Original</div>
+      <div class="canvas-wrap">
+        <canvas id="canvas-original"></canvas>
+      </div>
+    </div>
+    <div class="preview-card">
+      <div class="preview-card-title">Detección Iris + Pupila</div>
+      <div class="canvas-wrap">
+        <canvas id="canvas-processed"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUTTON -->
+  <button class="btn-analyze" id="btn-analyze" disabled>
+    Analizar iris
+  </button>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+    <div class="progress-label" id="progress-label">Iniciando...</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <div class="section-label">01 — Métricas Geométricas</div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val" id="m-ratio" style="color:var(--gold)">—</div>
+        <div class="metric-name">r_iris / r_pupila</div>
+        <div class="metric-sub" id="m-ratio-sub">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-phi" style="color:var(--teal)">1.618</div>
+        <div class="metric-name">φ golden ratio</div>
+        <div class="metric-sub">referencia</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-fractal" style="color:var(--purple)">—</div>
+        <div class="metric-name">Dimensión Fractal D</div>
+        <div class="metric-sub" id="m-fractal-sub">box-counting</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-peaks" style="color:var(--cream)">—</div>
+        <div class="metric-name">Picos FFT dominantes</div>
+        <div class="metric-sub" id="m-peaks-sub">ciclos / vuelta</div>
+      </div>
+    </div>
+
+    <div class="section-label">02 — Análisis Espectral</div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Perfil Angular (0°→360°)</div>
+        <canvas id="chart-angular" height="160"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">FFT Angular — Periodicidades</div>
+        <canvas id="chart-fft" height="160"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Perfil Radial (pupila→borde iris)</div>
+        <canvas id="chart-radial" height="160"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Mapa Polar del Iris</div>
+        <canvas id="chart-polar" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="section-label">03 — Sonificación φ-escalada</div>
+
+    <div class="sound-section">
+      <h3>El iris convertido en sonido</h3>
+      <p>
+        Cada periodicidad angular k se mapea a una frecuencia musical f = 220 · φ^(k/6)<br>
+        La amplitud varía con el patrón del iris · Síntesis aditiva · Web Audio API
+      </p>
+      <button class="btn-sound" id="btn-play">▶ Reproducir</button>
+      <button class="btn-sound" id="btn-stop">■ Detener</button>
+      <canvas class="waveform-canvas" id="waveform" height="60"></canvas>
+    </div>
+
+    <div class="section-label">04 — Interpretación</div>
+
+    <div class="interpretation" id="interpretation">
+      <h3>Resultados</h3>
+      <p id="interp-text">Calculando...</p>
+    </div>
+
+  </div>
+
+  <footer>
+    <div>Argira Station · Visual Acoustics — Iris Module · Jose Ranero García · Feb 2026</div>
+    <div>
+      <a href="https://zenodo.org/records/18758919" target="_blank">DOI 10.5281/zenodo.18758919</a>
+      &nbsp;·&nbsp; CC BY 4.0 &nbsp;·&nbsp;
+      <a href="https://zenodo.org/records/18734732" target="_blank">Visual Acoustics DOI</a>
+    </div>
+    <div style="margin-top:12px;font-size:9px;opacity:0.5">
+      Análisis geométrico · No diagnóstico médico
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ─── CONSTANTES ──────────────────────────────────────────────────────────────
+const PHI = (1 + Math.sqrt(5)) / 2;
+
+// ─── ESTADO ──────────────────────────────────────────────────────────────────
+let uploadedImage = null;
+let analysisData  = null;
+let audioCtx      = null;
+let audioNodes    = [];
+let isPlaying     = false;
+let animFrameId   = null;
+
+// ─── UPLOAD ──────────────────────────────────────────────────────────────────
+const uploadZone = document.getElementById('upload-zone');
+const fileInput  = document.getElementById('file-input');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadImage(file);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) loadImage(e.target.files[0]);
+});
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      uploadedImage = img;
+      showPreview(img);
+      document.getElementById('btn-analyze').disabled = false;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function showPreview(img) {
+  const canvas = document.getElementById('canvas-original');
+  const maxW = 480;
+  const scale = Math.min(maxW / img.width, maxW / img.height);
+  canvas.width  = img.width  * scale;
+  canvas.height = img.height * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  document.getElementById('preview-section').classList.add('visible');
+}
+
+// ─── ANÁLISIS ────────────────────────────────────────────────────────────────
+document.getElementById('btn-analyze').addEventListener('click', runAnalysis);
+
+async function runAnalysis() {
+  document.getElementById('btn-analyze').disabled = true;
+  const pb = document.getElementById('progress-bar');
+  pb.classList.add('visible');
+
+  setProgress(5, 'Preprocesando imagen...');
+  await sleep(80);
+
+  const { imgData, grayData, w, h, scale } = getImageData(uploadedImage);
+  setProgress(15, 'Detectando iris y pupila...');
+  await sleep(80);
+
+  const { pupil, iris } = detectCircles(grayData, w, h);
+  setProgress(30, 'Extrayendo perfil angular...');
+  await sleep(80);
+
+  const { angularProfile, angles } = extractAngularProfile(grayData, w, h, pupil, iris);
+  setProgress(50, 'Calculando FFT angular...');
+  await sleep(80);
+
+  const { freqs, amps, peaks } = computeFFT(angularProfile);
+  setProgress(65, 'Perfil radial...');
+  await sleep(80);
+
+  const { radii, radialProfile } = extractRadialProfile(grayData, w, h, pupil, iris);
+  setProgress(78, 'Dimensión fractal...');
+  await sleep(80);
+
+  const D = computeFractalDimension(grayData, w, h, pupil, iris);
+  setProgress(88, 'Renderizando detección...');
+  await sleep(80);
+
+  drawDetection(uploadedImage, pupil, iris, scale, w, h);
+  setProgress(95, 'Generando visualizaciones...');
+  await sleep(80);
+
+  const ratio = iris.r / pupil.r;
+  const phiDev = Math.abs(ratio - PHI) / PHI * 100;
+
+  analysisData = { pupil, iris, angularProfile, angles, freqs, amps, peaks, radii, radialProfile, D, ratio, phiDev };
+
+  renderResults(analysisData);
+  setProgress(100, 'Completo');
+
+  await sleep(400);
+  pb.classList.remove('visible');
+  document.getElementById('results').classList.add('visible');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setProgress(pct, label) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = label;
+}
+
+// ─── IMAGEN → DATOS ──────────────────────────────────────────────────────────
+function getImageData(img) {
+  const maxDim = 600;
+  const scale = Math.min(maxDim/img.width, maxDim/img.height);
+  const w = Math.round(img.width  * scale);
+  const h = Math.round(img.height * scale);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  const imgData = ctx.getImageData(0, 0, w, h);
+  // Grayscale
+  const grayData = new Float32Array(w*h);
+  for (let i = 0; i < w*h; i++) {
+    grayData[i] = 0.299*imgData.data[i*4] + 0.587*imgData.data[i*4+1] + 0.114*imgData.data[i*4+2];
+  }
+  return { imgData, grayData, w, h, scale };
+}
+
+// ─── DETECCIÓN IRIS/PUPILA ────────────────────────────────────────────────────
+function detectCircles(gray, w, h) {
+  // Buscar región más oscura (pupila) via centro de masa de píxeles oscuros
+  const threshold = 60;
+  let sumX=0, sumY=0, count=0;
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+    if (gray[y*w+x] < threshold) { sumX+=x; sumY+=y; count++; }
+  }
+  let px = count>0 ? sumX/count : w/2;
+  let py = count>0 ? sumY/count : h/2;
+
+  // Estimar radio pupila: expandir desde centro hasta que la media suba
+  let rp = estimatePupilRadius(gray, w, h, px, py);
+
+  // Iris: la pupila típicamente es ~40-50% del iris
+  // Buscar borde coloreado (gradiente alto) hacia el exterior
+  let ri = estimateIrisRadius(gray, w, h, px, py, rp);
+
+  // Centro iris ≈ centro pupila
+  return {
+    pupil: { x: Math.round(px), y: Math.round(py), r: Math.round(rp) },
+    iris:  { x: Math.round(px), y: Math.round(py), r: Math.round(ri) }
+  };
+}
+
+function estimatePupilRadius(gray, w, h, cx, cy, maxR=null) {
+  const maxSearch = maxR || Math.min(w,h)*0.25;
+  for (let r=4; r<maxSearch; r+=2) {
+    const samples = sampleCircle(gray, w, h, cx, cy, r, 24);
+    const mean = samples.reduce((a,b)=>a+b,0)/samples.length;
+    if (mean > 80) return r * 0.9;
+  }
+  return Math.min(w,h)*0.1;
+}
+
+function estimateIrisRadius(gray, w, h, cx, cy, rp) {
+  // Iris borde: buscar caída de intensidad (iris→esclera blanca)
+  const maxSearch = Math.min(w,h)*0.5;
+  let prevMean = -1;
+  for (let r=rp*1.2; r<maxSearch; r+=3) {
+    const samples = sampleCircle(gray, w, h, cx, cy, r, 36);
+    const mean = samples.reduce((a,b)=>a+b,0)/samples.length;
+    if (prevMean > 0 && mean > 160 && mean > prevMean * 1.3) {
+      return r * 0.92;
+    }
+    prevMean = mean;
+  }
+  return rp * 3.2;
+}
+
+function sampleCircle(gray, w, h, cx, cy, r, n) {
+  const vals = [];
+  for (let i=0; i<n; i++) {
+    const t = 2*Math.PI*i/n;
+    const x = Math.round(cx + r*Math.cos(t));
+    const y = Math.round(cy + r*Math.sin(t));
+    if (x>=0&&x<w&&y>=0&&y<h) vals.push(gray[y*w+x]);
+  }
+  return vals;
+}
+
+// ─── PERFIL ANGULAR ───────────────────────────────────────────────────────────
+function extractAngularProfile(gray, w, h, pupil, iris, nAngles=180) {
+  const angularProfile = new Float32Array(nAngles);
+  const angles = [];
+  const rInner = pupil.r * 1.15;
+  const rOuter = iris.r  * 0.90;
+  const nR = 20;
+
+  for (let i=0; i<nAngles; i++) {
+    const theta = 2*Math.PI*i/nAngles;
+    angles.push(theta);
+    let sum=0, cnt=0;
+    for (let ri=0; ri<nR; ri++) {
+      const r = rInner + (rOuter-rInner)*ri/nR;
+      const x = Math.round(pupil.x + r*Math.cos(theta));
+      const y = Math.round(pupil.y + r*Math.sin(theta));
+      if (x>=0&&x<w&&y>=0&&y<h) { sum+=gray[y*w+x]; cnt++; }
+    }
+    angularProfile[i] = cnt>0 ? sum/cnt : 0;
+  }
+  return { angularProfile, angles };
+}
+
+// ─── FFT SIMPLE ──────────────────────────────────────────────────────────────
+function computeFFT(signal) {
+  const N = signal.length;
+  const mean = signal.reduce((a,b)=>a+b,0)/N;
+  const centered = Array.from(signal).map(v=>v-mean);
+
+  // DFT (suficiente para N=180)
+  const amps = new Float32Array(N/2);
+  const freqs = new Float32Array(N/2);
+  for (let k=1; k<N/2; k++) {
+    let re=0, im=0;
+    for (let n=0; n<N; n++) {
+      re += centered[n]*Math.cos(2*Math.PI*k*n/N);
+      im -= centered[n]*Math.sin(2*Math.PI*k*n/N);
+    }
+    amps[k] = Math.sqrt(re*re+im*im)*2/N;
+    freqs[k] = k;
+  }
+
+  // Picos
+  const peaks = [];
+  const mean_amp = amps.reduce((a,b)=>a+b,0)/amps.length;
+  for (let k=2; k<40; k++) {
+    if (amps[k] > amps[k-1] && amps[k] > amps[k+1] && amps[k] > mean_amp*2) {
+      peaks.push(k);
+    }
+  }
+  peaks.sort((a,b) => amps[b]-amps[a]);
+
+  return { freqs, amps, peaks: peaks.slice(0,8) };
+}
+
+// ─── PERFIL RADIAL ────────────────────────────────────────────────────────────
+function extractRadialProfile(gray, w, h, pupil, iris, nR=50) {
+  const radii = [], radialProfile = [];
+  const nAngles = 36;
+  for (let i=0; i<nR; i++) {
+    const r = pupil.r + (iris.r - pupil.r)*i/nR;
+    radii.push(r);
+    const samples = sampleCircle(gray, w, h, pupil.x, pupil.y, r, nAngles);
+    radialProfile.push(samples.reduce((a,b)=>a+b,0)/samples.length);
+  }
+  return { radii, radialProfile };
+}
+
+// ─── DIMENSIÓN FRACTAL ───────────────────────────────────────────────────────
+function computeFractalDimension(gray, w, h, pupil, iris) {
+  // Extraer región del iris como array binario (bordes)
+  const edges = new Uint8Array(w*h);
+  const rOuter = iris.r * 0.93;
+  const rInner = pupil.r * 1.05;
+
+  // Gradiente simple
+  for (let y=1; y<h-1; y++) {
+    for (let x=1; x<w-1; x++) {
+      const dx = gray[y*w+(x+1)] - gray[y*w+(x-1)];
+      const dy = gray[(y+1)*w+x] - gray[(y-1)*w+x];
+      const mag = Math.sqrt(dx*dx+dy*dy);
+      const dist = Math.sqrt((x-pupil.x)**2+(y-pupil.y)**2);
+      if (dist > rInner && dist < rOuter && mag > 15) edges[y*w+x] = 1;
+    }
+  }
+
+  const sizes = [3,5,8,13,21];
+  const counts = [];
+  for (const s of sizes) {
+    let count = 0;
+    for (let y=0; y<h; y+=s) for (let x=0; x<w; x+=s) {
+      for (let dy=0; dy<s && !count; dy++) for (let dx=0; dx<s; dx++) {
+        // reset count check
+      }
+      // simple: check if any edge pixel in box
+      let found = false;
+      for (let dy=0; dy<s&&!found; dy++) for (let dx=0; dx<s&&!found; dx++) {
+        if (y+dy<h && x+dx<w && edges[(y+dy)*w+(x+dx)]) found=true;
+      }
+      if (found) count++;
+    }
+    counts.push(count);
+  }
+
+  // Regresión log-log
+  const logS = sizes.map(s=>Math.log(1/s));
+  const logC = counts.map(c=>Math.log(c+1));
+  const n = logS.length;
+  const sumX = logS.reduce((a,b)=>a+b,0);
+  const sumY = logC.reduce((a,b)=>a+b,0);
+  const sumXY = logS.reduce((s,x,i)=>s+x*logC[i],0);
+  const sumX2 = logS.reduce((s,x)=>s+x*x,0);
+  const D = (n*sumXY - sumX*sumY)/(n*sumX2 - sumX*sumX);
+  return Math.max(1.0, Math.min(2.0, D));
+}
+
+// ─── DIBUJAR DETECCIÓN ────────────────────────────────────────────────────────
+function drawDetection(img, pupil, iris, scale, origW, origH) {
+  const canvas = document.getElementById('canvas-processed');
+  const dispW = document.getElementById('canvas-original').width;
+  const s = dispW / origW;  // scale to display size
+
+  canvas.width  = document.getElementById('canvas-original').width;
+  canvas.height = document.getElementById('canvas-original').height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const drawScale = canvas.width / origW;
+  const cx = pupil.x * drawScale;
+  const cy = pupil.y * drawScale;
+
+  // Iris
+  ctx.beginPath();
+  ctx.arc(cx, cy, iris.r*drawScale, 0, Math.PI*2);
+  ctx.strokeStyle = '#c8a96e';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Pupila
+  ctx.beginPath();
+  ctx.arc(cx, cy, pupil.r*drawScale, 0, Math.PI*2);
+  ctx.strokeStyle = '#7eb8a0';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Línea φ
+  ctx.beginPath();
+  ctx.arc(cx, cy, pupil.r*PHI*drawScale, 0, Math.PI*2);
+  ctx.strokeStyle = '#c87e7e';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Labels
+  ctx.fillStyle = '#c8a96e';
+  ctx.font = '10px JetBrains Mono';
+  ctx.fillText('iris', cx + iris.r*drawScale + 5, cy);
+  ctx.fillStyle = '#7eb8a0';
+  ctx.fillText('pupila', cx + pupil.r*drawScale + 5, cy - 14);
+  ctx.fillStyle = '#c87e7e';
+  ctx.fillText('r×φ', cx + pupil.r*PHI*drawScale + 5, cy + 14);
+}
+
+// ─── RENDER RESULTADOS ────────────────────────────────────────────────────────
+function renderResults(d) {
+  const { ratio, phiDev, D, peaks, freqs, amps, angularProfile, angles, radii, radialProfile } = d;
+
+  // Métricas
+  document.getElementById('m-ratio').textContent = ratio.toFixed(3);
+  document.getElementById('m-ratio').style.color = phiDev < 20 ? 'var(--gold)' : 'var(--red)';
+  document.getElementById('m-ratio-sub').textContent = `desv. φ: ${phiDev.toFixed(1)}%`;
+
+  document.getElementById('m-fractal').textContent = D.toFixed(3);
+  document.getElementById('m-fractal-sub').textContent = D > 1.3 && D < 1.85 ? 'rango típico iris' : 'fuera de rango típico';
+
+  const topPeaks = peaks.slice(0,4).map(p=>freqs[p]).join(', ');
+  document.getElementById('m-peaks').textContent = peaks.length;
+  document.getElementById('m-peaks-sub').textContent = `k = ${topPeaks}`;
+
+  // Gráficas
+  drawAngularChart(angularProfile, angles, peaks, freqs);
+  drawFFTChart(freqs, amps, peaks);
+  drawRadialChart(radii, radialProfile, d.pupil, d.iris);
+  drawPolarChart(angularProfile, angles);
+
+  // Interpretación
+  buildInterpretation(d);
+}
+
+function drawAngularChart(profile, angles, peaks, freqs) {
+  const canvas = document.getElementById('chart-angular');
+  const W=canvas.width=canvas.offsetWidth||480, H=canvas.height=160;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0d1315'; ctx.fillRect(0,0,W,H);
+
+  const min=Math.min(...profile), max=Math.max(...profile);
+  const N=profile.length;
+
+  ctx.strokeStyle='rgba(126,184,160,0.2)';
+  ctx.beginPath();
+  for(let i=0;i<N;i++){
+    const x=i/N*W;
+    const y=H-(profile[i]-min)/(max-min)*(H-20)-10;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle='#7eb8a0'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for(let i=0;i<N;i++){
+    const x=i/N*W;
+    const y=H-(profile[i]-min)/(max-min)*(H-20)-10;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Eje x
+  ctx.fillStyle='#5a6268'; ctx.font='9px JetBrains Mono';
+  ctx.fillText('0°',4,H-2); ctx.fillText('180°',W/2-12,H-2); ctx.fillText('360°',W-26,H-2);
+}
+
+function drawFFTChart(freqs, amps, peaks) {
+  const canvas=document.getElementById('chart-fft');
+  const W=canvas.width=canvas.offsetWidth||480, H=canvas.height=160;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0d1315'; ctx.fillRect(0,0,W,H);
+
+  const maxK=40, maxAmp=Math.max(...Array.from(amps).slice(1,maxK));
+
+  // Barras
+  for(let k=1;k<maxK;k++){
+    const x=k/maxK*W;
+    const barH=(amps[k]/maxAmp)*(H-20);
+    const isPeak=peaks.includes(k);
+    ctx.fillStyle=isPeak?'#c8a96e':'rgba(200,169,110,0.25)';
+    ctx.fillRect(x-1,H-barH-5,Math.max(2,W/maxK-2),barH);
+    if(isPeak){
+      ctx.fillStyle='#c8a96e';
+      ctx.font='9px JetBrains Mono';
+      ctx.fillText(`k=${k}`,x-8,H-barH-8);
+    }
+  }
+
+  // Fibonacci marks
+  [1,2,3,5,8,13,21].forEach(fib=>{
+    if(fib<maxK){
+      const x=fib/maxK*W;
+      ctx.strokeStyle='rgba(200,169,110,0.2)';
+      ctx.setLineDash([2,4]);
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  });
+
+  ctx.fillStyle='#5a6268';ctx.font='8px JetBrains Mono';
+  ctx.fillText('Fib→',4,10);
+}
+
+function drawRadialChart(radii, profile, pupil, iris) {
+  const canvas=document.getElementById('chart-radial');
+  const W=canvas.width=canvas.offsetWidth||480, H=canvas.height=160;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0d1315'; ctx.fillRect(0,0,W,H);
+
+  const min=Math.min(...profile), max=Math.max(...profile);
+  const N=radii.length;
+  const rMin=radii[0], rMax=radii[N-1];
+
+  ctx.strokeStyle='#c8a96e'; ctx.lineWidth=1.8;
+  ctx.beginPath();
+  for(let i=0;i<N;i++){
+    const x=(radii[i]-rMin)/(rMax-rMin)*(W-20)+10;
+    const y=H-(profile[i]-min)/(max-min)*(H-20)-10;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Línea φ
+  const phiX=(pupil.r*(PHI-1))/(rMax-rMin)*(W-20)+10;
+  ctx.strokeStyle='#c87e7e'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(phiX,0);ctx.lineTo(phiX,H);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#c87e7e'; ctx.font='9px JetBrains Mono';
+  ctx.fillText('φ',phiX+3,14);
+
+  ctx.fillStyle='#5a6268'; ctx.font='9px JetBrains Mono';
+  ctx.fillText('pupila',4,H-3); ctx.fillText('iris',W-28,H-3);
+}
+
+function drawPolarChart(profile, angles) {
+  const canvas=document.getElementById('chart-polar');
+  const W=canvas.width=canvas.offsetWidth||480, H=canvas.height=160;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0d1315'; ctx.fillRect(0,0,W,H);
+
+  const cx=W/2, cy=H/2, maxR=Math.min(W,H)/2-15;
+  const min=Math.min(...profile), max=Math.max(...profile);
+  const N=profile.length;
+
+  // Círculos de referencia
+  ctx.strokeStyle='rgba(30,34,37,1)'; ctx.lineWidth=1;
+  [0.33,0.66,1].forEach(f=>{
+    ctx.beginPath();ctx.arc(cx,cy,maxR*f,0,Math.PI*2);ctx.stroke();
+  });
+
+  // Relleno
+  ctx.fillStyle='rgba(200,169,110,0.12)';
+  ctx.beginPath();
+  for(let i=0;i<N;i++){
+    const r=((profile[i]-min)/(max-min)*0.8+0.2)*maxR;
+    const x=cx+r*Math.cos(angles[i]);
+    const y=cy+r*Math.sin(angles[i]);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.fill();
+
+  // Línea
+  ctx.strokeStyle='#c8a96e'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for(let i=0;i<N;i++){
+    const r=((profile[i]-min)/(max-min)*0.8+0.2)*maxR;
+    const x=cx+r*Math.cos(angles[i]);
+    const y=cy+r*Math.sin(angles[i]);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.stroke();
+}
+
+// ─── INTERPRETACIÓN ──────────────────────────────────────────────────────────
+function buildInterpretation(d) {
+  const { ratio, phiDev, D, peaks, freqs } = d;
+  const topK = peaks.slice(0,4).map(p=>freqs[p]);
+  const fibMatch = topK.filter(k=>[1,2,3,5,8,13,21].includes(k));
+
+  let html = '';
+
+  // Ratio φ
+  if (phiDev < 10) {
+    html += `<p><strong>Ratio r_iris/r_pupila = ${ratio.toFixed(3)}</strong> — muy próximo a φ (desviación ${phiDev.toFixed(1)}%). La proporción entre iris y pupila sigue la razón áurea con alta precisión en esta imagen.</p>`;
+  } else if (phiDev < 25) {
+    html += `<p><strong>Ratio r_iris/r_pupila = ${ratio.toFixed(3)}</strong> — moderadamente próximo a φ = 1.618 (desviación ${phiDev.toFixed(1)}%). La detección automática puede mejorar con imágenes más centradas.</p>`;
+  } else {
+    html += `<p><strong>Ratio r_iris/r_pupila = ${ratio.toFixed(3)}</strong> — alejado de φ = 1.618 (desviación ${phiDev.toFixed(1)}%). Esto puede indicar detección imprecisa del borde del iris, condicionada por los párpados.</p>`;
+  }
+
+  // Fractal
+  html += `<p><strong>Dimensión fractal D = ${D.toFixed(3)}</strong> — `;
+  if (D >= 1.3 && D <= 1.8) {
+    html += `dentro del rango típico del iris humano (1.3–1.8). El patrón de fibras del iris tiene estructura fractal real: más complejo que una línea (D=1) pero sin llenar el plano (D=2).`;
+  } else {
+    html += `fuera del rango típico (1.3–1.8). Puede deberse a iluminación o calidad de la imagen.`;
+  }
+  html += '</p>';
+
+  // FFT
+  if (fibMatch.length >= 2) {
+    html += `<p><strong>Periodicidades FFT: k = ${topK.join(', ')}</strong> — ${fibMatch.length} de los picos dominantes corresponden a números de Fibonacci (${fibMatch.join(', ')}). Esto sugiere una estructura angular que refleja la secuencia de Fibonacci en la organización del iris.</p>`;
+  } else {
+    html += `<p><strong>Periodicidades FFT dominantes: k = ${topK.join(', ')}</strong> — el espectro angular muestra la estructura de criptas y fibras del iris.</p>`;
+  }
+
+  html += `<p style="font-size:10px;color:var(--muted);margin-top:16px">Análisis geométrico computacional · No constituye diagnóstico médico · Argira Station · Feb 2026</p>`;
+
+  document.getElementById('interp-text').innerHTML = html;
+}
+
+// ─── SONIFICACIÓN ─────────────────────────────────────────────────────────────
+document.getElementById('btn-play').addEventListener('click', playSound);
+document.getElementById('btn-stop').addEventListener('click', stopSound);
+
+function playSound() {
+  if (!analysisData) return;
+  stopSound();
+
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const { peaks, freqs, amps, angularProfile } = analysisData;
+  const duration = 8;
+
+  audioNodes = [];
+  const topPeaks = peaks.slice(0, 6);
+  const maxAmp = Math.max(...topPeaks.map(p=>amps[p]));
+
+  topPeaks.forEach((pk, i) => {
+    const k = freqs[pk];
+    const freqHz = Math.min(4000, Math.max(80, 220 * Math.pow(PHI, k/6)));
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(amps[pk]/maxAmp * 0.15, audioCtx.currentTime + 0.3);
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+
+    const osc = audioCtx.createOscillator();
+    osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+    osc.frequency.value = freqHz;
+
+    // LFO modulado por perfil angular
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    lfo.frequency.value = 0.3 + i*0.1;
+    lfoGain.gain.value = freqHz * 0.01;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfo.start();
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+
+    audioNodes.push({ osc, gain, lfo });
+  });
+
+  isPlaying = true;
+  document.getElementById('btn-play').classList.add('playing');
+  drawWaveformAnimation();
+
+  setTimeout(() => {
+    stopSound();
+  }, duration * 1000);
+}
+
+function stopSound() {
+  if (audioCtx) {
+    audioNodes.forEach(({ osc, lfo }) => {
+      try { osc.stop(); lfo.stop(); } catch(e){}
+    });
+    audioCtx.close();
+    audioCtx = null;
+  }
+  audioNodes = [];
+  isPlaying = false;
+  document.getElementById('btn-play').classList.remove('playing');
+  if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId=null; }
+  clearWaveform();
+}
+
+function drawWaveformAnimation() {
+  const canvas = document.getElementById('waveform');
+  const W = canvas.width = canvas.offsetWidth || 800;
+  const H = canvas.height = 60;
+  const ctx = canvas.getContext('2d');
+  let frame = 0;
+
+  function draw() {
+    if (!isPlaying) return;
+    ctx.fillStyle = 'rgba(13,19,21,0.3)';
+    ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = '#9e7ec8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    const t = frame/30;
+    for(let x=0;x<W;x++){
+      const phase = x/W*Math.PI*6 + t*2;
+      let y = H/2;
+      if (analysisData) {
+        analysisData.peaks.slice(0,4).forEach((pk,i)=>{
+          const k = analysisData.freqs[pk];
+          const freq = 220*Math.pow(PHI,k/6);
+          y += Math.sin(phase*(1+i*0.3))*8*(4-i);
+        });
+      }
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    frame++;
+    animFrameId = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function clearWaveform() {
+  const canvas = document.getElementById('waveform');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0d1315';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  if (analysisData) renderResults(analysisData);
+});
+</script>
+</body>
+</html>
